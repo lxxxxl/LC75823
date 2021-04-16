@@ -517,8 +517,9 @@ void LC75823::_letters(char gk[]) {
   for (int i = 0; i < 8; i++) {
     int c = gk[i] - 32;
     if (c >= 0 && c <= 94) {
-      _container[d] = pgm_read_byte(&character14SEG[c][0]);
-      _container[d + 1] = pgm_read_byte(&character14SEG[c][1]);
+      unsigned short word = pgm_read_word(&character14SEG[c]);
+      _container[d + 1] = word & 0x00FF;
+      _container[d] = word >> 8;
     } else {
       _container[d] = 0;
       _container[d + 1] = 0;
