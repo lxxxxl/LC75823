@@ -52,19 +52,19 @@ void LC75823::speed(int textSpeed) { _textSpeed = textSpeed; }
 
 /*
 * Function Name: clear
- * Description : Clears the _container array, which carries the character data, the _loopNumber int variable, which holds the number of rotations of the text on the screen, and
- * Resets the _sScroll int variable that hold the animation number and prints an empty container to the screen.
- * (It only deletes characters from the screen, symbols are not deleted.)
+ * Description : Resets the _container array that carries the character data, the _loopNumber int variable that holds the number of rotations of the text on the screen
+ *               and the _sScroll int variables that hold the animation number, and prints an empty container on the screen.
+ *               (It only removes characters from the screen, symbols are not.)
  * Input : None
  * Output : None
  */
 void LC75823::clear() {
   memset(_container, 0, _containerSize);
-  memset(_screen, 0, 15);
+  memset(_screen, 0, sizeof(_screen));
   // memset(_symbol, 0, 4); // To delete symbols.
   _sScroll = 0;
   _loopNumber = 0;
-  _print(_address, _screen, _symbols);
+  _print(_address, _screen);
 }
 
 /*
@@ -75,19 +75,15 @@ void LC75823::clear() {
  * Output : None
  */
 void LC75823::reset() {
-  memset(_screen, 0, 15);
+  memset(_screen, 0, sizeof(_screen));
   memset(_container, 0, _containerSize);
-  memset(_symbols, 0, 5);
-  _iconSt = false;
-  _iconRock = false;
   _sScroll = 0;
   _tScroll = 0;
   _loopNumber = 0;
   _textLenght = 0;
   _textSpeed = 300;
-  _volumeLeftLevel = 0;
-  _volumeRightLevel = 0;
-  _print(_address, _screen, _symbols);
+  _volumeLevel = 0;
+  _print(_address, _screen);
 }
 
 /*
@@ -97,8 +93,8 @@ void LC75823::reset() {
  * Output : None
  */
 void LC75823::display() {
-  bitWrite(_symbols[4], 1, 0);
-  _print(_address, _screen, _symbols);
+  bitWrite(_screen[18], 1, 0);
+  _print(_address, _screen);
 }
 
 /*
@@ -108,8 +104,8 @@ void LC75823::display() {
  * Output : None
  */
 void LC75823::noDisplay() {
-  bitWrite(_symbols[4], 1, 1);
-  _print(_address, _screen, _symbols);
+  bitWrite(_screen[18], 1, 1);
+  _print(_address, _screen);
 }
 
 /*
@@ -132,65 +128,32 @@ void LC75823::volumeEndValue(int endValue){
   _volumeEndValue = endValue;
 }
 
-/*
-* Function Name: volumeLeftLevel
- * Description : Determines the value of left lcd volume indicators. The range of values can be specified with the volumeStartValue and volumeEndValue methods.
- * Input : int levelValue (Left volume level value).
- * Output : None
- */
-void LC75823::volumeLeftLevel(int levelValue) {
-  int convertedLevelValue = ((levelValue - _volumeStartValue) /
-                             ((_volumeEndValue - _volumeStartValue) / 8));
-
-  _symbols[1] = B11111111;
-  _symbols[1] >>= 8 - convertedLevelValue;
-  bitWrite(_symbols[1], 7, _iconRock);
-  _volumeLeftLevel = convertedLevelValue;
-  if (_volumeLeftLevel == 0 && _volumeRightLevel == 0) {
-    bitWrite(_symbols[2], 0, 0);
-  } else {
-    bitWrite(_symbols[2], 0, 1);
-  }
-  _print(_address, _screen, _symbols);
-}
 
 /*
 * Function Name: volumeRightLevel
- * Description : Determines the value of right lcd volume indicators. The range of values can be specified with the volumeStartValue and volumeEndValue methods.
- * Input : int levelValue (Right volume level value).
+ * Description : It determines the value of the volume indicators on the right. The range of values can be specified with the volumeStartValue and volumeEndValue methods.
+ * Input : int levelValue (Volume level value on the right).
  * Output : None
  */
-void LC75823::volumeRightLevel(int levelValue) {
+void LC75823::volumeLevel(int levelValue) {
   int convertedLevelValue = ((levelValue - _volumeStartValue) /
-                             ((_volumeEndValue - _volumeStartValue) / 8));
-  _symbols[3] = B11111111;
-  _symbols[3] >>= 8 - convertedLevelValue;
-  bitWrite(_symbols[3], 7, _iconRock);
-  _volumeLeftLevel = convertedLevelValue;
-  if (_volumeLeftLevel == 0 && _volumeRightLevel == 0) {
-    bitWrite(_symbols[2], 0, 0);
-  } else {
-    bitWrite(_symbols[2], 0, 1);
-  }
-  _print(_address, _screen, _symbols);
-}
+                             ((_volumeEndValue - _volumeStartValue) / 9));
 
-/*
-* Function Name: sChart (Scroll Chart)
- * Description : Lights up animation of lcd chart symbols.
- * Input : boolean chartValue (0 = Animation off, 1 = Animation on).
- * Output : None
- */
-void LC75823::sChart(boolean chartValue) {
-  if (chartValue) {
-    for (int i = 2; i < 5; i++) {
-      bitWrite(_symbols[0], 2, 0);
-      bitWrite(_symbols[0], 3, 0);
-      bitWrite(_symbols[0], 4, 0);
-      bitWrite(_symbols[0], i, chartValue);
-      _print(_address, _screen, _symbols);
+  if (convertedLevelValue > _volumeLevel) {
+    while (_volumeLevel <= convertedLevelValue) {
+      symbol(_volumeLevel + VOLUME_1, 1);
+      _volumeLevel++;
     }
   }
+
+  else if (convertedLevelValue < _volumeLevel) {
+    while (_volumeLevel > convertedLevelValue) {
+      symbol(_volumeLevel + VOLUME_1, 0);
+      _volumeLevel--;
+    }
+  }
+
+  _volumeLevel = convertedLevelValue;
 }
 
 /*
@@ -232,7 +195,7 @@ void LC75823::text(char text[]) {
   _letters(_screenText);
   _setLetters();
   _setSymbols();
-  _print(_address, _screen, _symbols);
+  _print(_address, _screen);
 }
 
 /*
@@ -259,21 +222,21 @@ void LC75823::sText(char text[]) {
   _letters(_screenText);
   _setLetters();
   _textLoop();
-  _setSymbols();
-  _print(_address, _screen, _symbols);
+  // TODO restore symbols state
+  _print(_address, _screen);
 }
 
 /*
  * Function Name: _setSymbols
- * Description : Process symbol states into the _screen byte array
+ * Description : Saves symbol states to the _screen byte array.
  * Input : None
  * Output : None
  */
-void LC75823::_setSymbols() { bitWrite(_screen[0], 7, _iconSt); }
+void LC75823::_setSymbols() { /*bitWrite(_screen[0], 7, _iconSt);*/ }
 
 /*
  * Function Name: _setLetters
- * Description : In order to make the translated data of the entered text suitable for the LCD board suitable for SPI byte data packets,
+ * Description : It performs the necessary bit shifting to make the ASCII codes of the entered text suitable for the SPI data package of the lcd driver.
  *               performs the necessary bit-shifting operations. Result is assigned to the _screen byte array.
  * Input : None
  * Output : None
@@ -306,26 +269,22 @@ void LC75823::_setLetters() {
 
 /*
  * Function Name: _print
- * Description : Use the prepared _address int variable, _screen and _symbols byte
+ * Description : Using the Arduino SPI library, it sends the _address int variable, _screen and _symbols byte strings to the driver.
  *               to send the strings to the lcd using the Arduino SPI library
  * Input : byte pScreen[] 
  * Output : None
  */
-void LC75823::_print(int pAddress, byte pScreen[], byte pSymbols[]) {
+void LC75823::_print(int pAddress, byte pScreen[]) {
   digitalWrite(_chipEnabledPin, LOW);
   // Address Data (A1- A8)
   SPI.transfer(pAddress);
   digitalWrite(_chipEnabledPin, HIGH);
 
   // Character Segment Data (D1- D120) 15 Byte
-  for (int i = 0; i <= 14; i++) {
+  for (int i = 0; i <= 19; i++) {
     SPI.transfer(pScreen[i]);
   }
 
-  // Symbol Segment Data (D121 - D168) 5 Byte
-  for (int i = 0; i <= 4; i++) {
-    SPI.transfer(pSymbols[i]);
-  }
   digitalWrite(_chipEnabledPin, LOW);
   delay(_textSpeed);
 }
@@ -339,175 +298,88 @@ void LC75823::_print(int pAddress, byte pScreen[], byte pSymbols[]) {
  */
 void LC75823::symbol(enum Symbol symbolName, boolean status) {
   switch (symbolName) {
-  case ST:
-    _iconSt = status;
-    bitWrite(_screen[0], 7, status);
-    break; // open or close ST icon.
-
-  case POP:
-    bitWrite(_symbols[0], 0, status);
+  // top symbols  
+  case AF:
+    bitWrite(_screen[1], 2, status);
     break;
-  case CLAS:
-    bitWrite(_symbols[0], 1, status);
+  case TP:
+    bitWrite(_screen[1], 6, status);
     break;
-  case CHART_1:
-    bitWrite(_symbols[0], 2, status);
+  case TA:
+    bitWrite(_screen[1], 5, status);
     break;
-  case CHART_2:
-    bitWrite(_symbols[0], 3, status);
+  case PTY:
+    bitWrite(_screen[1], 4, status);
     break;
-  case CHART_3:
-    bitWrite(_symbols[0], 4, status);
+  case DVD:
+    bitWrite(_screen[3], 4, status);
     break;
-  case X_BASS:
-    bitWrite(_symbols[0], 5, status);
+  case VCD:
+    bitWrite(_screen[5], 5, status);
     break;
-  case TEYP_ICON:
-    bitWrite(_symbols[0], 7, status);
+  case CD:
+    bitWrite(_screen[7], 6, status);
     break;
-
-  case VOLUME_LEFT_2:
-    bitWrite(_symbols[1], 0, status);
+  case WMA:
+    bitWrite(_screen[10], 0, status);
     break;
-  case VOLUME_LEFT_3:
-    bitWrite(_symbols[1], 1, status);
+  case RINGS:
+    bitWrite(_screen[16], 3, status);
     break;
-  case VOLUME_LEFT_4:
-    bitWrite(_symbols[1], 2, status);
+  // bottom symbols
+  case RPT:
+    bitWrite(_screen[1], 3, status);
     break;
-  case VOLUME_LEFT_5:
-    bitWrite(_symbols[1], 3, status);
+  case EON:
+    bitWrite(_screen[1], 1, status);
     break;
-  case VOLUME_LEFT_6:
-    bitWrite(_symbols[1], 4, status);
+  case MP4:
+    bitWrite(_screen[9], 7, status);
     break;
-  case VOLUME_LEFT_7:
-    bitWrite(_symbols[1], 5, status);
+  case MP3:
+    bitWrite(_screen[14], 2, status);
     break;
-  case VOLUME_LEFT_8:
-    bitWrite(_symbols[1], 6, status);
+  case STEREO:
+    bitWrite(_screen[16], 0, status);
     break;
-  case ROCK:
-    bitWrite(_symbols[1], 7, status);
-    _iconRock = status;
-    break;
-
+  // volume
   case VOLUME_1:
-    bitWrite(_symbols[2], 0, status);
+    bitWrite(_screen[18], 7, status);
+    break;
+  case VOLUME_2:
+    bitWrite(_screen[18], 6, status);
+    break;
+  case VOLUME_3:
+    bitWrite(_screen[18], 5, status);
+    break;
+  case VOLUME_4:
+    bitWrite(_screen[1], 7, status);
+    break;
+  case VOLUME_5:
+    bitWrite(_screen[0], 0, status);
+    break;
+  case VOLUME_6:
+    bitWrite(_screen[0], 1, status);
+    break;
+  case VOLUME_7:
+    bitWrite(_screen[0], 4, status);
+    break;
+  case VOLUME_8:
+    bitWrite(_screen[0], 3, status);
+    break;
+  case VOLUME_9:
+    bitWrite(_screen[0], 2, status);
     break;
 
-  case VOLUME_RIGHT_2:
-    bitWrite(_symbols[3], 0, status);
-    break;
-  case VOLUME_RIGHT_3:
-    bitWrite(_symbols[3], 1, status);
-    break;
-  case VOLUME_RIGHT_4:
-    bitWrite(_symbols[3], 2, status);
-    break;
-  case VOLUME_RIGHT_5:
-    bitWrite(_symbols[3], 3, status);
-    break;
-  case VOLUME_RIGHT_6:
-    bitWrite(_symbols[3], 4, status);
-    break;
-  case VOLUME_RIGHT_7:
-    bitWrite(_symbols[3], 5, status);
-    break;
-  case VOLUME_RIGHT_8:
-    bitWrite(_symbols[3], 6, status);
-    break;
-
-  case MONO:
-    bitWrite(_symbols[4], 4, status);
-    break;
-  case LOC:
-    bitWrite(_symbols[4], 5, status);
-    break;
-  case CD_ICON:
-    bitWrite(_symbols[4], 7, status);
-    break;
   default:;
     break;
   }
-  _print(_address, _screen, _symbols);
-}
-
-/*
- * Function Name: volumeChart
- * Description : Makes the volume symbols blink with int value.
- * Input : int volumeChartNo(volume symbol number), 
- *         boolean status(visibility, 0 = Off, 1 = On)
- * Output : None
- */
-void LC75823::volumeChart(int volumeChartNo, boolean status) {
-  switch (volumeChartNo) {
-  case 16:
-    bitWrite(_symbols[0], 2, status);
-    break; // CHART_1
-  case 17:
-    bitWrite(_symbols[0], 3, status);
-    break; // CHART_2
-  case 18:
-    bitWrite(_symbols[0], 4, status);
-    break; // CHART_3
-
-  case 2:
-    bitWrite(_symbols[1], 0, status);
-    break; // VOLUME_LEFT_2
-  case 3:
-    bitWrite(_symbols[1], 1, status);
-    break; // VOLUME_LEFT_3
-  case 4:
-    bitWrite(_symbols[1], 2, status);
-    break; // VOLUME_LEFT_4
-  case 5:
-    bitWrite(_symbols[1], 3, status);
-    break; // VOLUME_LEFT_5
-  case 6:
-    bitWrite(_symbols[1], 4, status);
-    break; // VOLUME_LEFT_6
-  case 7:
-    bitWrite(_symbols[1], 5, status);
-    break; // VOLUME_LEFT_7
-  case 8:
-    bitWrite(_symbols[1], 6, status);
-    break; // VOLUME_LEFT_8
-
-  case 1:
-    bitWrite(_symbols[2], 0, status);
-    break; // VOLUME_1
-
-  case 9:
-    bitWrite(_symbols[3], 0, status);
-    break; // VOLUME_RIGHT_2
-  case 10:
-    bitWrite(_symbols[3], 1, status);
-    break; // VOLUME_RIGHT_3
-  case 11:
-    bitWrite(_symbols[3], 2, status);
-    break; // VOLUME_RIGHT_4
-  case 12:
-    bitWrite(_symbols[3], 3, status);
-    break; // VOLUME_RIGHT_5
-  case 13:
-    bitWrite(_symbols[3], 4, status);
-    break; // VOLUME_RIGHT_6
-  case 14:
-    bitWrite(_symbols[3], 5, status);
-    break; // VOLUME_RIGHT_7
-  case 15:
-    bitWrite(_symbols[3], 6, status);
-    break; // VOLUME_RIGHT_8
-  default:;
-    break;
-  }
-  _print(_address, _screen, _symbols);
+  _print(_address, _screen);
 }
 
 /*
  * Function Name: _letters
- * Description : Compares the ACSII equivalents of the characters in the entered text with the character14SEG two-dimensional array in the character.h 
+ * Description : Compares the ASCII equivalents of the characters in the entered text with the character14SEG two-dimensional array in the character.h 
  *               file and transfers the values to the _container byte array.
  * Input : char gk[](First 8 characters of the text entered)
  * Output : None
