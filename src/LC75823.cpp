@@ -222,7 +222,7 @@ void LC75823::sText(char text[]) {
   _letters(_screenText);
   _setLetters();
   _textLoop();
-  // TODO restore symbols state
+  _setSymbols();
   _print(_address, _screen);
 }
 
@@ -232,7 +232,10 @@ void LC75823::sText(char text[]) {
  * Input : None
  * Output : None
  */
-void LC75823::_setSymbols() { /*bitWrite(_screen[0], 7, _iconSt);*/ }
+void LC75823::_setSymbols() {
+  for (int i = 0; i < Symbol::STEREO; i++)
+    symbol((Symbol)i, _symbols[i]);
+}
 
 /*
  * Function Name: _setLetters
@@ -374,6 +377,9 @@ void LC75823::symbol(enum Symbol symbolName, boolean status) {
   default:;
     break;
   }
+  // save new status
+  if (symbolName <= STEREO)
+    _symbols[symbolName] = status;
   _print(_address, _screen);
 }
 

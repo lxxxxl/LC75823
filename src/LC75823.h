@@ -79,6 +79,7 @@ private:
   int _volumeStartValue = 0;
   int _volumeEndValue = 8;
   byte _screen[19];         // 19 SPI byte package for character and symbol data
+  bool _symbols[14];        // stores status of symbols (switch on/off)
 };
 
 #endif
