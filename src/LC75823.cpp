@@ -130,14 +130,14 @@ void LC75823::volumeEndValue(int endValue){
 
 
 /*
-* Function Name: volumeRightLevel
- * Description : It determines the value of the volume indicators on the right. The range of values can be specified with the volumeStartValue and volumeEndValue methods.
- * Input : int levelValue (Volume level value on the right).
+* Function Name: volumeLevel
+ * Description : It determines the value of the volume indicators. The range of values can be specified with the volumeStartValue and volumeEndValue methods.
+ * Input : int levelValue (Volume level value).
  * Output : None
  */
 void LC75823::volumeLevel(int levelValue) {
   int convertedLevelValue = ((levelValue - _volumeStartValue) /
-                             ((_volumeEndValue - _volumeStartValue) / 9));
+                             ((_volumeEndValue - _volumeStartValue) / 8));
 
   if (convertedLevelValue > _volumeLevel) {
     while (_volumeLevel <= convertedLevelValue) {
