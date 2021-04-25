@@ -141,14 +141,14 @@ void LC75823::volumeLevel(int levelValue) {
 
   if (convertedLevelValue > _volumeLevel) {
     while (_volumeLevel <= convertedLevelValue) {
-      symbol(_volumeLevel + VOLUME_1, 1);
+      symbol((Symbol)(_volumeLevel + VOLUME_1), 1);
       _volumeLevel++;
     }
   }
 
   else if (convertedLevelValue < _volumeLevel) {
     while (_volumeLevel > convertedLevelValue) {
-      symbol(_volumeLevel + VOLUME_1, 0);
+      symbol((Symbol)(_volumeLevel + VOLUME_1), 0);
       _volumeLevel--;
     }
   }
